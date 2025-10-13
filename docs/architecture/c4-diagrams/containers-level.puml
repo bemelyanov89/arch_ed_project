@@ -1,0 +1,66 @@
+@startuml DigitalTwin_Containers_Updated
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(architect, "Enterprise Architect", "Проектирует IT-ландшафт")
+Person(analyst, "Бизнес-аналитик", "Анализирует бизнес-процессы")
+
+System_Boundary(digital_twin, "Цифровой Двойник") {
+    Container(web_app, "Web Application", "React/TypeScript", "SPA интерфейс для пользователей")
+    Container(api_gateway, "API Gateway", "Nginx/Kong", "Единая точка входа, аутентификация")
+    Container(asset_service, "Asset Service", "Java/Spring Boot", "Управление активами и мета-моделью")
+    Container(dependency_service, "Dependency Service", "Java/Spring Boot", "Анализ графа зависимостей")
+    Container(search_service, "Search Service", "Python/FastAPI", "Семантический поиск и AI-помощник")
+    Container(ingestion_service, "Data Ingestion Service", "Python/Apache Beam", "Сбор и обработка данных")
+    Container(document_processor, "Document Processor", "Python", "Обработка документов и NLP")
+    Container(lakehouse_ingestor, "LakeHouse Ingestor", "Java/Spark", "Загрузка данных в LakeHouse")
+    
+    ContainerDb(graph_db, "Graph Database", "Neo4j", "Хранит граф зависимостей и связи")
+    ContainerDb(vector_db, "Vector Database", "Milvus", "Векторные эмбеддинги для поиска")
+    ContainerDb(lakehouse, "Document LakeHouse", "S3 + Iceberg + Trino", "Хранилище документов и метаданных")
+    ContainerDb(message_queue, "Message Queue", "Apache Kafka", "Асинхронная коммуникация между сервисами")
+}
+
+Rel(architect, web_app, "Использует веб-интерфейс")
+Rel(analyst, web_app, "Строит отчеты и дашборды")
+
+Rel(web_app, api_gateway, "HTTP/REST API")
+Rel(api_gateway, asset_service, "Команды и запросы")
+Rel(api_gateway, dependency_service, "Запросы анализа")
+Rel(api_gateway, search_service, "Поисковые запросы")
+
+' Основные потоки данных
+Rel(asset_service, graph_db, "Чтение/запись связей")
+Rel(asset_service, lakehouse, "Чтение/запись метаданных активов")
+Rel(dependency_service, graph_db, "Анализ графа")
+Rel(search_service, vector_db, "Векторный поиск")
+Rel(search_service, lakehouse, "SQL-запросы через Trino")
+
+' Потоки обработки документов
+Rel(document_processor, vector_db, "Сохраняет эмбеддинги")
+Rel(document_processor, lakehouse_ingestor, "Передает обработанные документы")
+Rel(lakehouse_ingestor, lakehouse, "Загружает в Iceberg таблицы")
+Rel(lakehouse_ingestor, message_queue, "Публикует DocumentIngested")
+
+' Асинхронная коммуникация через Kafka
+Rel(asset_service, message_queue, "Публикует AssetRegistered")
+Rel(ingestion_service, message_queue, "Публикует RawDataIngested")
+Rel(document_processor, message_queue, "Публикует DocumentProcessed")
+
+' Подписки на события из Kafka
+Rel(message_queue, lakehouse_ingestor, "Слушает DocumentProcessed\nдля загрузки в LakeHouse")
+Rel(message_queue, search_service, "Слушает DocumentIngested\nдля обновления поискового индекса")
+
+' Внешние интеграции
+System_Ext(pap, "ПАП", "Портал архитектурного проектирования")
+System_Ext(jira, "Jira", "Atlassian")
+System_Ext(zabbix, "Zabbix", "Monitoring System")
+System_Ext(confluence, "Confluence", "Atlassian")
+System_Ext(esed, "ЕСЭД", "Система электронного документооборота")
+
+Rel(ingestion_service, pap, "REST API синхронизация активов")
+Rel(ingestion_service, jira, "Jira API импорт задач")
+Rel(ingestion_service, zabbix, "Zabbix API сбор метрик")
+Rel(document_processor, confluence, "Confluence API извлечение")
+Rel(document_processor, esed, "ЕСЭД API документооборот")
+
+@enduml

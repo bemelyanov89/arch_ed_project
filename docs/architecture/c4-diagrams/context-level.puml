@@ -1,0 +1,28 @@
+@startuml DigitalTwin_Context_Updated
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+Person(architect, "Enterprise Architect", "Проектирует IT-ландшафт, анализирует зависимости")
+Person(analyst, "Бизнес-аналитик", "Анализирует бизнес-процессы и их связь с IT")
+Person(admin, "Администратор системы", "Настраивает источники данных, мониторит работу")
+Person(manager, "Менеджер процессов", "Управляет бизнес-процессами и документацией")
+
+System(digital_twin, "Цифровой Двойник компании", "Единая система управления знаниями о бизнес-процессах и IT-ландшафте")
+
+System_Ext(pap, "ПАП", "Портал архитектурного проектирования", "Хранит конфигурации IT-активов и архитектурные решения")
+System_Ext(ticketing, "Ticketing System", "Jira", "Управление задачами и инцидентами")
+System_Ext(zabbix, "Monitoring System", "Zabbix", "Мониторинг систем и метрики производительности")
+System_Ext(confluence, "Knowledge Base", "Confluence", "Техническая и бизнес-документация")
+System_Ext(esed, "Document Management", "ЕСЭД", "Система электронного документооборота")
+
+Rel(architect, digital_twin, "Анализирует зависимости, проектирует архитектуру")
+Rel(analyst, digital_twin, "Исследует бизнес-процессы, строит отчеты")
+Rel(admin, digital_twin, "Настраивает коннекторы, мониторит качество данных")
+Rel(manager, digital_twin, "Анализирует бизнес-процессы из ЕСЭД")
+
+Rel(digital_twin, pap, "Синхронизирует архитектурные активы и решения")
+Rel(digital_twin, ticketing, "Импортирует задачи и зависимости")
+Rel(digital_twin, zabbix, "Получает метрики и статусы систем")
+Rel(digital_twin, confluence, "Индексирует документацию и процессы")
+Rel(digital_twin, esed, "Извлекает бизнес-документы и регламенты")
+
+@enduml
