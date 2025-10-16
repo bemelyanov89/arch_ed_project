@@ -1,10 +1,8 @@
-@startuml DigitalTwin_Component_DocumentProcessor
+@startuml DigitalTwin_Component_DocumentProcessor_Corrected
 !include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
 
-' === Document Processor Container ===
 Container(document_processor, "Document Processor", "Python/FastAPI", "Обработка документов и извлечение сущностей")
 
-' === Внутренние компоненты Document Processor ===
 System_Boundary(document_processor, "Document Processor") {
     
     ' --- API Layer ---
@@ -41,35 +39,48 @@ document_api --> ingestion_service : "process_document()"
 document_api --> nlp_orchestrator : "extract_entities()"
 
 ' Application -> Domain Services
-ingestion_service --> text_preprocessor : "preprocess_text()"
-ingestion_service --> document_classifier : "classify_document()"
-nlp_orchestrator --> entity_extractor : "extract_entities()"
-nlp_orchestrator --> embedding_generator : "generate_embeddings()"
+ingestion_service --> text_preprocessor : "preprocess_text()\n(сырой текст)"
+ingestion_service --> document_classifier : "classify_document()\n(очищенный текст)"
+ingestion_service --> nlp_orchestrator : "process_document()\n(подготовленный текст)"
+
+' NLP Orchestrator -> Domain Services
+nlp_orchestrator --> entity_extractor : "extract_entities()\n(подготовленный текст)"
+nlp_orchestrator --> embedding_generator : "generate_embeddings()\n(подготовленный текст)"
 
 ' Application -> Infrastructure
 ingestion_service --> confluence_client : "fetch_pages()"
 ingestion_service --> esed_client : "fetch_documents()"
 ingestion_service --> kafka_producer : "publish_events()"
-nlp_orchestrator --> milvus_client : "store_embeddings()"
-nlp_orchestrator --> cache_manager : "cache_results()"
+
+' NLP Orchestrator -> Infrastructure
+nlp_orchestrator --> milvus_client : "store_embeddings()\n(векторные представления)"
+nlp_orchestrator --> cache_manager : "cache_results()\n(NLP результаты)"
 
 ' Domain Services -> Infrastructure
 embedding_generator --> milvus_client : "save_vectors()"
 entity_extractor --> cache_manager : "cache_entities()"
 
 ' Infrastructure -> External Systems
-confluence_client --> confluence : "REST API"
-esed_client --> esed : "REST API"
-milvus_client --> milvus_db : "gRPC"
-cache_manager --> redis_cache : "GET/SET"
-kafka_producer --> kafka : "produce()"
+confluence_client --> confluence : "REST API\n(получение страниц)"
+esed_client --> esed : "REST API\n(получение документов)"
+milvus_client --> milvus_db : "gRPC\n(сохранение векторов)"
+cache_manager --> redis_cache : "GET/SET\n(кэширование)"
+kafka_producer --> kafka : "produce()\n(DocumentProcessed)"
 
-' === Потоки данных ===
-Rel_R(confluence, confluence_client, "Сырые страницы", "JSON")
-Rel_R(esed, esed_client, "Бизнес-документы", "PDF/JSON")
-Rel_R(milvus_client, milvus_db, "Векторные эмбеддинги", "gRPC")
-Rel_R(kafka_producer, kafka, "DocumentProcessed", "Avro")
-Rel_R(cache_manager, redis_cache, "Кэш-запросы", "Redis protocol")
+' === Ключевые потоки данных ===
+note right of ingestion_service
+  <b>Получает документы:</b>
+  1. Из Confluence (страницы)
+  2. Из ЕСЭД (бизнес-документы)
+  3. Через API (ручная загрузка)
+end note
+
+note left of nlp_orchestrator
+  <b>Входные данные:</b>
+  • Подготовленный текст
+  • Метаданные документа
+  • Контекст обработки
+end note
 
 ' === Стилизация ===
 AddComponentTag("api", $bgColor="lightblue")
