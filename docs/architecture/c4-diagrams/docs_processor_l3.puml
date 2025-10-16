@@ -1,0 +1,82 @@
+@startuml DigitalTwin_Component_DocumentProcessor
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+' === Document Processor Container ===
+Container(document_processor, "Document Processor", "Python/FastAPI", "Обработка документов и извлечение сущностей")
+
+' === Внутренние компоненты Document Processor ===
+System_Boundary(document_processor, "Document Processor") {
+    
+    ' --- API Layer ---
+    Component(document_api, "Document API", "FastAPI", "REST endpoints для управления документами")
+    
+    ' --- Application Layer ---
+    Component(ingestion_service, "Ingestion Service", "Python", "Сервис приема и обработки документов")
+    Component(nlp_orchestrator, "NLP Orchestrator", "Python", "Оркестрация NLP pipeline")
+    
+    ' --- Domain Services ---
+    Component(entity_extractor, "Entity Extractor", "Python/spaCy", "Извлечение сущностей из текста")
+    Component(embedding_generator, "Embedding Generator", "Python/sentence-transformers", "Генерация векторных представлений")
+    Component(document_classifier, "Document Classifier", "Python", "Классификация типов документов")
+    Component(text_preprocessor, "Text Preprocessor", "Python", "Очистка и нормализация текста")
+    
+    ' --- Infrastructure Components ---
+    Component(confluence_client, "Confluence Client", "Python", "Клиент для Confluence API")
+    Component(esed_client, "ESED Client", "Python", "Клиент для ЕСЭД API")
+    Component(kafka_producer, "Kafka Producer", "Python", "Публикация событий в Kafka")
+    Component(milvus_client, "Milvus Client", "Python", "Клиент для векторной БД")
+    Component(cache_manager, "Cache Manager", "Python/Redis", "Кэширование результатов обработки")
+}
+
+' === Внешние зависимости ===
+System_Ext(confluence, "Confluence", "Atlassian")
+System_Ext(esed, "ЕСЭД", "Document Management")
+ContainerDb(milvus_db, "Vector Database", "Milvus", "Хранилище векторных эмбеддингов")
+ContainerDb(redis_cache, "Cache", "Redis", "Кэш результатов обработки")
+ContainerDb(kafka, "Message Queue", "Apache Kafka", "Асинхронная коммуникация")
+
+' === Внутренние связи компонентов ===
+' API -> Application
+document_api --> ingestion_service : "process_document()"
+document_api --> nlp_orchestrator : "extract_entities()"
+
+' Application -> Domain Services
+ingestion_service --> text_preprocessor : "preprocess_text()"
+ingestion_service --> document_classifier : "classify_document()"
+nlp_orchestrator --> entity_extractor : "extract_entities()"
+nlp_orchestrator --> embedding_generator : "generate_embeddings()"
+
+' Application -> Infrastructure
+ingestion_service --> confluence_client : "fetch_pages()"
+ingestion_service --> esed_client : "fetch_documents()"
+ingestion_service --> kafka_producer : "publish_events()"
+nlp_orchestrator --> milvus_client : "store_embeddings()"
+nlp_orchestrator --> cache_manager : "cache_results()"
+
+' Domain Services -> Infrastructure
+embedding_generator --> milvus_client : "save_vectors()"
+entity_extractor --> cache_manager : "cache_entities()"
+
+' Infrastructure -> External Systems
+confluence_client --> confluence : "REST API"
+esed_client --> esed : "REST API"
+milvus_client --> milvus_db : "gRPC"
+cache_manager --> redis_cache : "GET/SET"
+kafka_producer --> kafka : "produce()"
+
+' === Потоки данных ===
+Rel_R(confluence, confluence_client, "Сырые страницы", "JSON")
+Rel_R(esed, esed_client, "Бизнес-документы", "PDF/JSON")
+Rel_R(milvus_client, milvus_db, "Векторные эмбеддинги", "gRPC")
+Rel_R(kafka_producer, kafka, "DocumentProcessed", "Avro")
+Rel_R(cache_manager, redis_cache, "Кэш-запросы", "Redis protocol")
+
+' === Стилизация ===
+AddComponentTag("api", $bgColor="lightblue")
+AddComponentTag("application", $bgColor="lightgreen") 
+AddComponentTag("domain", $bgColor="lightyellow")
+AddComponentTag("infrastructure", $bgColor="lightpink")
+
+
+
+@enduml
