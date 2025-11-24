@@ -1,0 +1,126 @@
+@startuml DigitalTwin_Microservices_Observability
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(architect, "Enterprise Architect", "Проектирует IT-ландшафт")
+Person(analyst, "Бизнес-аналитик", "Анализирует бизнес-процессы")
+Person(devops, "DevOps Engineer", "Мониторинг и поддержка")
+
+System_Boundary(k8s_cluster, "Kubernetes Cluster") {
+    
+    ' === Ingress & API Gateway ===
+    Container(ingress_nginx, "Ingress NGINX", "Kubernetes Ingress", "Внешний трафик, SSL termination\n• Access logs\n• Rate limiting metrics")
+    Container(api_gateway, "API Gateway", "Spring Cloud Gateway", "Маршрутизация, аутентификация\n• Request tracing\n• Error tracking")
+    
+    ' === Frontend Services ===
+    Container(web_app, "Web UI", "React/TypeScript", "SPA интерфейс\n• Frontend error tracking\n• Performance metrics")
+    
+    ' === Core Domain Services ===
+    Container(asset_mgmt_service, "Asset Management", "Java/Quarkus", "Управление активами\n• Structured logging\n• Business metrics")
+    Container(meta_model_service, "Meta-Model Service", "Java/Spring Boot", "Управление онтологией\n• Audit logs\n• Schema change tracking")
+    Container(dependency_graph_service, "Dependency Graph", "Java/Spring Boot", "Анализ зависимостей\n• Graph query metrics\n• Algorithm performance")
+    
+    ' === Supporting Services ===
+    Container(search_service, "Search Service", "Python/FastAPI", "Семантический поиск\n• Search latency metrics\n• Query success rates")
+    Container(ai_assistant_service, "AI Assistant", "Python/FastAPI", "Чат-бот и NLP\n• NLP model performance\n• Conversation analytics")
+    Container(document_processing_service, "Document Processing", "Python/FastAPI", "Обработка документов\n• Processing latency\n• Entity extraction accuracy")
+    
+    ' === Data Ingestion Services ===
+    Container(pap_connector_service, "PAP Connector", "Python/Celery", "Коннектор к ПАП\n• Sync success rates\n• API error tracking")
+    Container(confluence_connector_service, "Confluence Connector", "Python/Celery", "Коннектор к Confluence\n• Page processing stats\n• Incremental sync metrics")
+    Container(esed_connector_service, "ESED Connector", "Python/Celery", "Коннектор к ЕСЭД\n• Document processing logs\n• Validation errors")
+    
+    ' === Event Processing Services ===
+    Container(event_processor_service, "Event Processor", "Java/Spring Cloud Stream", "Обработка событий\n• Event processing latency\n• Dead letter queue metrics")
+    Container(lakehouse_ingestor_service, "LakeHouse Ingestor", "Java/Spark", "Загрузка в LakeHouse\n• Data quality metrics\n• Ingestion performance")
+    
+    ' === Shared Data Stores ===
+    ContainerDb(neo4j_cluster, "Neo4j Cluster", "Neo4j Enterprise", "Графовая БД\n• Query performance\n• Cluster health")
+    ContainerDb(milvus_cluster, "Milvus Cluster", "Milvus", "Векторная БД\n• Search performance\n• Resource utilization")
+    ContainerDb(redis_cluster, "Redis Cluster", "Redis", "Кэш и сессии\n• Cache hit rates\n• Memory usage")
+    ContainerDb(kafka_cluster, "Kafka Cluster", "Apache Kafka", "Event streaming\n• Topic lag\n• Broker metrics")
+    ContainerDb(postgresql_cluster, "PostgreSQL Cluster", "PostgreSQL", "Операционные данные\n• Query performance\n• Replication lag")
+    
+    ' === Observability Stack ===
+    Container(prometheus, "Prometheus", "Prometheus", "Сбор метрик\n• Service metrics\n• Resource utilization\n• Custom business metrics")
+    
+    Container(loki, "Loki", "Grafana Loki", "Сбор логов\n• Structured logging\n• Log aggregation\n• Log querying")
+    
+    Container(tempo, "Tempo", "Grafana Tempo", "Distributed tracing\n• Request tracing\n• Latency analysis\n• Dependency mapping")
+    
+    Container(grafana, "Grafana", "Grafana", "Визуализация и алертинг\n• Dashboards\n• Alert rules\n• Performance reports")
+    
+    Container(alertmanager, "Alertmanager", "Prometheus Alertmanager", "Управление алертами\n• Alert routing\n• Deduplication\n• Silence management")
+    
+    Container(jaeger, "Jaeger", "Jaeger", "Трассировка запросов\n• Distributed traces\n• Performance analysis")
+    
+    Container(fluentbit, "Fluent Bit", "Fluent Bit", "Log collection agent\n• Log parsing\n• Log forwarding\n• Kubernetes metadata")
+}
+
+' === External Systems ===
+System_Ext(pap, "ПАП", "Портал архитектурного проектирования")
+System_Ext(confluence, "Confluence", "Atlassian")
+System_Ext(esed, "ЕСЭД", "Document Management")
+
+' === Traffic Flow ===
+Rel(architect, web_app, "HTTPS")
+Rel(analyst, web_app, "HTTPS")
+Rel(devops, grafana, "Monitoring access")
+
+Rel(web_app, ingress_nginx, "HTTPS")
+Rel(ingress_nginx, api_gateway, "Internal HTTPS")
+
+' === Service-to-Service Communication ===
+Rel(api_gateway, asset_mgmt_service, "REST/gRPC")
+Rel(api_gateway, search_service, "REST/gRPC")
+Rel(asset_mgmt_service, meta_model_service, "gRPC")
+
+' === Event-Driven Communication ===
+Rel(asset_mgmt_service, kafka_cluster, "Asset events")
+Rel(document_processing_service, kafka_cluster, "Processing events")
+Rel(kafka_cluster, event_processor_service, "Event streaming")
+
+' === Data Storage Connections ===
+Rel(asset_mgmt_service, postgresql_cluster, "SQL")
+Rel(dependency_graph_service, neo4j_cluster, "Bolt protocol")
+Rel(search_service, milvus_cluster, "gRPC")
+
+' === External Integrations ===
+Rel(pap_connector_service, pap, "REST API")
+Rel(confluence_connector_service, confluence, "REST API")
+Rel(esed_connector_service, esed, "REST API")
+
+' === Observability Data Flow ===
+
+' Metrics flow
+Rel(asset_mgmt_service, prometheus, "Metrics\n/metrics endpoint")
+Rel(search_service, prometheus, "Custom metrics\nBusiness KPIs")
+Rel(kafka_cluster, prometheus, "Kafka metrics\nJMX exporter")
+Rel(neo4j_cluster, prometheus, "Database metrics\nNeo4j exporter")
+
+' Logs flow
+Rel(asset_mgmt_service, fluentbit, "Application logs\nJSON format")
+Rel(search_service, fluentbit, "Structured logs\nWith correlation IDs")
+Rel(fluentbit, loki, "Log aggregation\nWith labels")
+Rel(api_gateway, fluentbit, "Access logs\nRequest tracing")
+
+' Tracing flow
+Rel(asset_mgmt_service, jaeger, "Distributed traces\nOpenTelemetry")
+Rel(api_gateway, jaeger, "Request tracing\nSpan context")
+Rel(search_service, jaeger, "Nested spans\nPerformance data")
+
+' Alerting flow
+Rel(prometheus, alertmanager, "Alert rules\nBased on metrics")
+Rel(alertmanager, grafana, "Alert notifications\nVisualization")
+
+' Visualization flow
+Rel(grafana, prometheus, "Metrics queries\nPromQL")
+Rel(grafana, loki, "Log queries\nLogQL")
+Rel(grafana, tempo, "Trace queries\nTrace analysis")
+Rel(grafana, jaeger, "Trace visualization\nService graph")
+
+' Additional monitoring
+Rel(ingress_nginx, prometheus, "HTTP metrics\nStatus codes, latency")
+Rel(prometheus, grafana, "Metrics dashboard\nReal-time monitoring")
+Rel(loki, grafana, "Log exploration\nTroubleshooting interface")
+
+@enduml
