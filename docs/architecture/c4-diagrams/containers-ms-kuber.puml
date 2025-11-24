@@ -1,0 +1,95 @@
+@startuml DigitalTwin_Microservices_K8s
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+Person(architect, "Enterprise Architect", "Проектирует IT-ландшафт")
+Person(analyst, "Бизнес-аналитик", "Анализирует бизнес-процессы")
+
+System_Boundary(k8s_cluster, "Kubernetes Cluster") {
+    
+    ' === Ingress & API Gateway ===
+    Container(ingress_nginx, "Ingress NGINX", "Kubernetes Ingress", "Внешний трафик, SSL termination")
+    Container(api_gateway, "API Gateway", "Spring Cloud Gateway", "Маршрутизация, аутентификация, rate limiting")
+    
+    ' === Frontend Services ===
+    Container(web_app, "Web UI", "React/TypeScript", "SPA интерфейс\nStateless, CDN-hosted")
+    
+    ' === Core Domain Services ===
+    Container(asset_mgmt_service, "Asset Management", "Java/Quarkus", "Управление активами\nStateless, 12-factor")
+    Container(meta_model_service, "Meta-Model Service", "Java/Spring Boot", "Управление онтологией\nVersioned API")
+    Container(dependency_graph_service, "Dependency Graph", "Java/Spring Boot", "Анализ зависимостей\nGraph algorithms")
+    
+    ' === Supporting Services ===
+    Container(search_service, "Search Service", "Python/FastAPI", "Семантический поиск\nStateless, async")
+    Container(ai_assistant_service, "AI Assistant", "Python/FastAPI", "Чат-бот и NLP\nStateless, GPU-optimized")
+    Container(document_processing_service, "Document Processing", "Python/FastAPI", "Обработка документов\nStateless, batch processing")
+    
+    ' === Data Ingestion Services ===
+    Container(pap_connector_service, "PAP Connector", "Python/Celery", "Коннектор к ПАП\nEvent-driven, retry logic")
+    Container(confluence_connector_service, "Confluence Connector", "Python/Celery", "Коннектор к Confluence\nIncremental sync")
+    Container(esed_connector_service, "ESED Connector", "Python/Celery", "Коннектор к ЕСЭД\nDocument streaming")
+    Container(zabbix_connector_service, "Zabbix Connector", "Python/Celery", "Коннектор к Zabbix\nReal-time metrics")
+    
+    ' === Event Processing Services ===
+    Container(event_processor_service, "Event Processor", "Java/Spring Cloud Stream", "Обработка событий\nStream processing")
+    Container(lakehouse_ingestor_service, "LakeHouse Ingestor", "Java/Spark", "Загрузка в LakeHouse\nK8s Jobs, batch")
+    
+    ' === Shared Data Stores ===
+    ContainerDb(neo4j_cluster, "Neo4j Cluster", "Neo4j Enterprise", "Графовая БД\nHA Cluster, backups")
+    ContainerDb(milvus_cluster, "Milvus Cluster", "Milvus", "Векторная БД\nDistributed, scalable")
+    ContainerDb(redis_cluster, "Redis Cluster", "Redis", "Кэш и сессии\nDistributed cache")
+    ContainerDb(kafka_cluster, "Kafka Cluster", "Apache Kafka", "Event streaming\nHA, replication")
+    ContainerDb(postgresql_cluster, "PostgreSQL Cluster", "PostgreSQL", "Операционные данные\nHA, read replicas")
+    ContainerDb(s3_storage, "S3 Storage", "MinIO/Ceph", "Object storage\nMulti-tenant")
+}
+
+' === External Systems ===
+System_Ext(pap, "ПАП", "Портал архитектурного проектирования")
+System_Ext(confluence, "Confluence", "Atlassian")
+System_Ext(esed, "ЕСЭД", "Document Management")
+System_Ext(zabbix, "Zabbix", "Monitoring System")
+
+' === Traffic Flow ===
+Rel(architect, web_app, "HTTPS")
+Rel(analyst, web_app, "HTTPS")
+
+Rel(web_app, ingress_nginx, "HTTPS")
+Rel(ingress_nginx, api_gateway, "Internal HTTPS")
+Rel(api_gateway, web_app, "Static assets")
+
+' === Service-to-Service Communication ===
+' Synchronous calls
+Rel(api_gateway, asset_mgmt_service, "REST/gRPC\nJWT tokens")
+Rel(api_gateway, search_service, "REST/gRPC\nAsync calls")
+Rel(api_gateway, ai_assistant_service, "REST/WebSocket\nStreaming")
+
+Rel(asset_mgmt_service, meta_model_service, "gRPC\nService mesh")
+Rel(asset_mgmt_service, dependency_graph_service, "gRPC\nLow latency")
+Rel(search_service, ai_assistant_service, "gRPC\nNLP context")
+
+' === Event-Driven Communication ===
+Rel(asset_mgmt_service, kafka_cluster, "Asset events\nAvro schema")
+Rel(document_processing_service, kafka_cluster, "Processing events\nJSON schema")
+Rel(pap_connector_service, kafka_cluster, "Sync events\nRetry topics")
+
+Rel(kafka_cluster, event_processor_service, "Event streaming\nConsumer groups")
+Rel(kafka_cluster, lakehouse_ingestor_service, "Batch processing\nK8s CronJobs")
+
+' === Data Storage Connections ===
+Rel(asset_mgmt_service, postgresql_cluster, "SQL\nConnection pooling")
+Rel(meta_model_service, postgresql_cluster, "SQL\nRead replicas")
+Rel(dependency_graph_service, neo4j_cluster, "Bolt protocol\nHA proxy")
+Rel(search_service, milvus_cluster, "gRPC\nLoad balanced")
+Rel(ai_assistant_service, redis_cluster, "Cache\nCluster mode")
+Rel(document_processing_service, redis_cluster, "Processing cache")
+
+' === External Integrations ===
+Rel(pap_connector_service, pap, "REST API\nOAuth2")
+Rel(confluence_connector_service, confluence, "REST API\nAPI tokens")
+Rel(esed_connector_service, esed, "REST API\nMTLS")
+Rel(zabbix_connector_service, zabbix, "REST API\nBasic auth")
+
+' === Storage Connections ===
+Rel(lakehouse_ingestor_service, s3_storage, "S3 API\nParquet files")
+Rel(event_processor_service, s3_storage, "Checkpoints\nState storage")
+
+@enduml
